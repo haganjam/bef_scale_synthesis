@@ -868,46 +868,60 @@ write_csv(trans_y_lm_out, here("figures/Table_S4.csv"))
 # figure 3B
 
 # from this model selection, the best model by a significant margin is the species sorting*mean model
-# pecies sorting*mean overyielding linear model
+# we plot this model for figure 3B
+
+# the figure in the publication is modified for aesthetics
 
 # Using the full dataset
 ss_lm <- lm(slope_value ~ species_sorting*mean_ave_overyield, 
             data = filter(meta_scale_slope, slope_type == "trans_oy_slope"))
+
+# check model assumptions
 plot(ss_lm)
+
+# check model summary
 summary(ss_lm)
 
-# Without the major outlier
+# refit the model without the major outlier: Dzialowski_Smith_2008_one
 ss_lm_out <- lm(slope_value ~ species_sorting*mean_ave_overyield, 
                 data = filter(meta_scale_slope, slope_type == "trans_oy_slope",
                               Experiment_ID != "Dzialowski_Smith_2008_one"))
+
+# check the model assumptions
 plot(ss_lm_out)
+
+# check model summary
 summary(ss_lm_out)
 
-# Analyse relationship between species sorting and overyielding slopes
 
-# Calculate species_sorting slope at different mean_ave_overyield values
-# Check the range of mean_ave_overyield values
+# calculate species_sorting slope at different mean_ave_overyield values
+
+# check the range of mean_ave_overyield values
 av_oy_vector <- filter(meta_scale_slope, slope_type == "trans_oy_slope") %>% 
   pull(mean_ave_overyield)
 av_oy_vector
 
-# Calculate some summary statistics
+# calculate various summary statistics
 range(av_oy_vector)
 mean(av_oy_vector)
 sd(av_oy_vector)
 
+# set values of explanatory variables to derive model predictions for
 new_d <- expand.grid(species_sorting = seq(from = 0, to = 1, by = 0.1),
                      mean_ave_overyield = c((mean(av_oy_vector)-sd(av_oy_vector)), 
                                             (mean(av_oy_vector)),
                                             (mean(av_oy_vector)+sd(av_oy_vector))))
+
+# replicate these values to use with the model without the outlier
 new_d_out <- new_d
 
-# Predict from these values
+# get model predictions from these values
 new_d$slope_value <- predict(ss_lm, new_d)
 new_d_out$slope_value <- predict(ss_lm_out, new_d_out)
 
 # Plot the graph with predictions
-p2 <- ggplot(data = meta_scale_slope %>% filter(!slope_type %in% c("bef_slope","average_oy_slope")),
+fig_3B <- ggplot(data = meta_scale_slope %>% 
+                   filter(!slope_type %in% c("bef_slope","average_oy_slope")),
        aes(x = species_sorting, y = slope_value, colour = mean_ave_overyield)) +
   geom_hline(yintercept = 0, alpha = 0.2) +
   geom_line(data = new_d, aes(group = (mean_ave_overyield))) +
@@ -922,75 +936,90 @@ p2 <- ggplot(data = meta_scale_slope %>% filter(!slope_type %in% c("bef_slope","
   theme(axis.title.x = element_text(margin = margin(t = 5, r = 0, b = 0, l = 0)),
         legend.title = element_text(size = 7.5), legend.text = element_text(size = 7.5),
         legend.key.size = unit(0.25, "cm"))
-p2
-ggsave(p2,
-       filename = "species_specialiastion.svg",
+
+ggsave(fig_3B,
+       filename = here("figures/Fig_3B.svg"),
        units = "cm",
        width = 12,
        height = 8)
 
 
 
-####################################################################################
-####################################################################################
-## Import the data assessment to count initial and final studies included ##########
-####################################################################################
+# literature synthesis data assessment
 
-# Import data directly from the shareable link
-data_ass_url <- 'https://docs.google.com/spreadsheets/d/1EOmeWN-NfA2-i83XR_3lNmkW0jniIZdpPUhj86ehMJc/edit?usp=sharing'
-data_ass <- gsheet2tbl(data_ass_url)
+# here, we examine how many studies, which were excluded and why etc.
 
-# Check the data
+
+### download data
+
+# the raw data are archived on [Figshare](https://doi.org/10.6084/m9.figshare.12279884.v1)
+
+# download the data from figshare once published
+
+# for now, we just read in the data normally
+
+
+### read in the raw data
+data_ass <- read_csv( here("raw_data/BEF-scale_meta-analysis_data_assessment.csv") )
+
+# check the data
 View(data_ass)
 
-# Examine the columns
 colnames(data_ass)
 
-# Reorder the columns
-data_ass <- data_ass %>% select(meta_analysis_database:reason,
-                   data_available_y_n:Note_2, inclusion_exclusion)
+# reorder the columns
+data_ass <- data_ass %>% 
+  select(meta_analysis_database:reason, data_available_y_n:Note_2, inclusion_exclusion)
 
-# Check this database
+# check this database
 summary(data_ass)
 
-# Check for unique values in each column
-sapply(data_ass, function(x) unique(x)) 
+# check for unique values in each column
+lapply(data_ass, function(x) unique(x)) 
 
-sapply(data_ass, function(x) length(unique(x))) 
+lapply(data_ass, function(x) length(unique(x))) 
 
-# Check the Bruno references
-filter(data_ass, 
-       reference_id %in% c("Bruno_et_al_2005", "Bruno_O'Connor_2005", "Bruno_et_al_2006"))
-
-# How many unique publications?
+# how many unique publications did we assess for each of the published meta-analyses?
 data_ass %>% 
   mutate(unique_id = paste(reference_id, year, journal, sep = ".")) %>%
   group_by(meta_analysis_database) %>%
   summarise(n = n()) %>% ungroup() %>%
   mutate(total_pubs = sum(n))
 
+# how many unique publications did we assess across the published meta-analyses
 data_ass %>% 
   mutate(unique_id = paste(reference_id, year, journal, sep = ".")) %>%
-  pull(reference_id) %>% unique() %>% length()
+  pull(reference_id) %>% 
+  unique() %>% 
+  length()
 
-
-# Extract the data that were deemed to have a suitable design
+# extract studies that were deemed to have a suitable design
 filter(data_ass, suitable_design_y_n == "y") %>%
-  pull(reference_id) %>% unique() %>% sort()
+  pull(reference_id) %>% 
+  unique() %>% 
+  sort()
 
 filter(data_ass, suitable_design_y_n == "y") %>%
-  pull(reference_id) %>% unique() %>% length()
+  pull(reference_id) %>% 
+  unique() %>% 
+  sort() %>%
+  length()
 
-# Extract the data for studies with a suitable design and for which data were available
+# extract the studies with a suitable design and for which data were available
 filter(data_ass, suitable_design_y_n == "y", data_available_y_n == "y") %>%
-  pull(reference_id) %>% unique() %>% sort()
+  pull(reference_id) %>% 
+  unique() %>% 
+  sort()
 
 filter(data_ass, suitable_design_y_n == "y", data_available_y_n == "y") %>%
-  pull(reference_id) %>% unique() %>% length()
+  pull(reference_id) %>% 
+  unique() %>% 
+  length()
 
-# Extract data for studies with a suitable design but for which data were not available
+# extract data for studies with a suitable design but for which data were not available
 contacts <- filter(data_ass, suitable_design_y_n == "y", data_available_y_n == "n") %>%
-  pull(reference_id) %>% unique()
+  pull(reference_id) %>% 
+  unique()
 contacts
 
 # Examine which studies were and weren't included from these for which data were not available
@@ -1007,72 +1036,14 @@ filter(data_ass, reference_id %in% contacts) %>%
 
 # Extract the data for the studies that were actually included
 filter(data_ass, inclusion_exclusion == "inclusion") %>%
-  pull(reference_id) %>% unique() %>% sort()
+  pull(reference_id) %>% 
+  unique() %>% 
+  sort()
 
 filter(data_ass, inclusion_exclusion == "inclusion") %>%
-  pull(reference_id) %>% unique() %>% sort() %>% length()
+  pull(reference_id) %>% 
+  unique() %>% 
+  sort() %>% 
+  length()
 
-
-
-
-
-
-
-
-
-
-### Exploratory analysis for the analysis
-
-### Check outliers from the average_oy_slope
-
-lm_ss_aoy <- lm(slope_value ~ species_sorting,
-            data = meta_scale_slope %>% filter(slope_type == "average_oy_slope"))
-plot(lm_ss_aoy)
-summary(lm_ss_aoy)
-lm_ss_aoy$residuals
-cooks.distance(lm_ss_aoy)
-
-ggplot(data = meta_scale_slope %>% filter(slope_type == "average_oy_slope") %>%
-         mutate(residuals = lm_ss_aoy$residuals),
-       aes(x = hab_oy_metric, y = slope_value)) +
-  geom_point(size = 3.5) +
-  geom_smooth(method = "lm", se = FALSE) +
-  theme_classic()
-  
-### Check outliers from the trans_oy_slope
-
-lm_ss <- lm(slope_value ~ species_sorting,
-                data = meta_scale_slope %>% filter(slope_type == "trans_oy_slope"))
-plot(lm_ss)
-summary(lm_ss)
-lm_ss$residuals
-cooks.distance(lm_ss)
-AIC(lm_ss)
-
-meta_scale_slope %>% filter(slope_type == "trans_oy_slope") %>%
-  #filter(Experiment_ID != "Dzialowski_Smith_2008_one") %>%
-  mutate(residuals = lm_ss$residuals) %>%
-  select(residuals, habitat_cv, mean_ave_overyield, hab_oy_metric,
-         cv_ave_overyield, habitat_cv, Pearson_r_hab_oy) %>%
-  pairs()
-
-meta_scale_slope %>% filter(slope_type == "trans_oy_slope") %>%
-  #filter(Experiment_ID != "Dzialowski_Smith_2008_one") %>%
-  mutate(residuals = lm_ss$residuals) %>%
-  ggplot(aes(x = mean_ave_overyield, y = residuals)) +
-  geom_point(size = 3.5) +
-  geom_smooth(method = "lm", se = FALSE) +
-  theme_classic()
-  
-
-
-
-
-
-
-
-
-
-
-
-
+# 25 unique studies
