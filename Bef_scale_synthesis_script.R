@@ -498,16 +498,22 @@ for (i in seq_along(1:length(effects))) {
           legend.key = element_rect(fill = "white"))
   
   ggsave(raw_plots[[i]],
-         filename = paste(paste("Fig_", figs6_8_names[i], sep = "_"),".png", sep = ""),
+         filename = paste( here("figures"),paste(paste("Fig_", figs6_8_names[i], sep = "_"),".svg", sep = ""), sep = "/" ),
          dpi = 400, units = "cm",
          width = 19,
          height = 24)
 }
 
 
-# fig. 3 inset plots
+# fig. 3Ai-Aiii inset plots
 
-# plot "Blake_Duffy_2010_one"
+# this plots the relationship between scale and:
+# (1) the bef-slope
+# (2) average overyielding
+# (3) transgressive overyielding
+# for a single experiment ("Blake_Duffy_2010_one") as an example
+
+# note that this graph was aesthetically modified for the main manuscript
 
 slope_type <- unique(meta_scale_raw$effect_type)
 slope_names <- c("BEF-slope", "ave-OY", "trans-OY")
@@ -533,11 +539,12 @@ for (i in seq_along(1:length(slope_type))) {
           axis.text.y = element_text(size=8))
   
   ggsave(raw_plot_bd[[i]],
-         filename = paste(paste("Fig_", fig3_names[i], sep = "_"),".svg", sep = ""),
+         filename = paste( here("figures"),paste(paste("Fig_", fig3_names[i], sep = "_"),".svg", sep = ""), sep = "/" ),
          units = "cm",
          width = 4.5,
          height = 3.5)
 }
+
 
 
 # run the meta_scale_out() function to output raw values for each experiment
@@ -556,21 +563,21 @@ meta_scale_slope <- meta_scale_slope %>%
   gather(key = slope_type, value = slope_value, bef_slope, trans_oy_slope, average_oy_slope)
 
 
-### main text
+### main text statistics
 
-### Test hypotheses about the distribution of slopes
-View(meta_scale_slope)
+# here, we test whether hypotheses about the distribution of the slopes between scale and:
+# (1) the bef slope
+# (2) average overyielding
+# (3) transgressive overyielding
 
-# Define the dataset
-meta_scale_slope
+# for this, we use Wilcoxon signed rank tests
 
-# Define the slope types
-slope_t <- meta_scale_slope$slope_type %>% unique()
-slope_t
+# define the three different slopes
+slope_t <- meta_scale_slope$slope_type %>% 
+  unique()
 
-# Alternative hypotheses
+# define the alternative hypotheses for each slope
 h0_wil <- c("two.sided", "greater", "two.sided")
-h0_wil
 
 wt_out <- vector("list", length(slope_t))
 
@@ -590,11 +597,14 @@ for (i in seq_along(1:length(slope_t))) {
 }
 
 wt_out <- bind_rows(wt_out)
-mutate(wt_out, p_val_hom = p.adjust(wt_out$p_val, method = "hommel"),
-       p_val_BH = p.adjust(wt_out$p_val, method = "BH")) %>%
-  write_csv( here("figures/wilcox_slope_tests.csv") )
 
-# Check these results
+# adjust the P-values and output the results into a table
+wt_out %>% 
+  mutate(p_val_hom = p.adjust(wt_out$p_val, method = "hommel"),
+         p_val_BH = p.adjust(wt_out$p_val, method = "BH")) %>% 
+  write_csv( here("figures/Main_text_wilcox_tests.csv") )
+
+# manually check these results for consistency
 meta_scale_slope %>% 
   filter(slope_type == slope_t[2]) %>%
   pull(slope_value) %>%
@@ -603,13 +613,52 @@ meta_scale_slope %>%
               conf.int = FALSE)
 
 
+# fig. 3A
+
+# This graph compares the slope between scale and:
+# (1) the bef slope
+# (2) average overyielding
+# (3) transgressive overyielding
+# for all experiments included in the literature synthesis
+
+# note that this graph was aesthetically modified for the main manuscript
+
+fig_3A <- ggplot(data = meta_scale_slope %>% 
+               mutate(slope_type = factor(slope_type, 
+                                          levels(factor(slope_type))[c(2,1,3)])) %>%
+               mutate(slope_type = factor(slope_type, 
+                                          labels = c("BEF-scale", "ave-OY-scale", "trans-OY-scale"))),
+             aes(x = slope_type, y = slope_value)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_boxplot(width = 0.35, alpha = 0.6, outlier.shape = NA) +
+  geom_jitter(size = 2, alpha = 0.3, width = 0.1, shape = 16) +
+  scale_colour_viridis_d(begin = 0, end = 0.9) +
+  xlab("") +
+  ylab("slope estimate") +
+  theme_meta() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave(fig_3A,
+       filename = here("figures/Fig_3A.svg"),
+       units = "cm",
+       width = 8,
+       height = 8)
 
 
+### Supplementary material
 
+# table S2
 
-### Test hypotheses about the distribution of slopes
-View(meta_scale_slope)
+# here, we test whether hypotheses about the distribution of the slopes between scale and:
+# (1) the bef slope
+# (2) average overyielding
+# (3) transgressive overyielding
 
+# using parametric one-sample t-tests as opposed to non-parametric Wilcoxon signed rank tests
+# we also check the influence of outliers in the data
+
+# for this, we write a function called t_test_slopes with arguments:
 # data = the meta_scale_slope dataset
 # slope_type = vector of slope types
 # hypotheses = two-sided or one-sided
@@ -632,22 +681,25 @@ t_test_slopes <- function(data, slopes, hypotheses) {
          p_val_BH = p.adjust(t_tests$p_val, method = "BH"))
 }
 
-### Test with all the data
+# apply this function to the full dataset and write the output into a table
 t_test_full <- t_test_slopes(data = meta_scale_slope,
               slopes = c(unique(meta_scale_slope$slope_type)),
               hypotheses = c("two.sided", "two.sided", "greater")) %>%
   mutate(slope = factor(slope, levels = c("bef_slope", "average_oy_slope", "trans_oy_slope"))) %>%
   arrange(slope)
-write_csv(t_test_full, here("figures/t_test_full.csv") )
 
-# Check these data
+write_csv(t_test_full, here("figures/Table_S2_all_data.csv") )
+
+# check these results for consistency
 t.test(filter(meta_scale_slope, slope_type == "bef_slope") %>% 
-         pull(slope_value), 
-       mu = 0, alternative = c("two.sided"))
+         pull(slope_value), mu = 0, alternative = c("two.sided"))
 
 
-# Calculate extreme outliers WITHIN each group
-# Defined as 3 x IQR
+# calculate extreme outliers (> 3 X IQR from 0.25 or 0.75 quantiles) for each slope:
+# (1) the bef slope
+# (2) average overyielding
+# (3) transgressive overyielding
+
 outlier_refs <- meta_scale_slope %>% group_by(slope_type) %>%
   mutate(Q1 = quantile(slope_value, probs = c(0.25))[[1]],
          Q3 = quantile(slope_value, probs = c(0.75))[[1]],
@@ -660,15 +712,15 @@ outlier_refs <- meta_scale_slope %>% group_by(slope_type) %>%
   filter(outlier == "out") %>% 
   select(Experiment_ID, slope_type, outlier) %>%
   distinct() %>%
-  pull(Experiment_ID) %>% unique()
+  pull(Experiment_ID) %>% 
+  unique()
 
+# get all combinations of these diferent outliers
 outlier_ref_comb <- do.call(c,
         lapply(seq_along(outlier_refs), combn, x = outlier_refs , simplify = FALSE)
         )
 
-# Test whilst excluding outliers
-# With major outliers within each slope group removed
-
+# repeat the one-sample t-tests but excluding all combinations of these outliers
 t_test_outliers <- vector("list", length(outlier_ref_comb ))
 for (i in seq_along(1:length(outlier_ref_comb ))) {
   t_test_outliers[[i]] <- t_test_slopes(data = meta_scale_slope %>% 
@@ -676,65 +728,39 @@ for (i in seq_along(1:length(outlier_ref_comb ))) {
                 slopes = unique(meta_scale_slope$slope_type),
                 hypotheses = c("two.sided", "two.sided", "greater"))
 }
+
 t_test_outliers <- bind_rows(t_test_outliers, .id = "reference_removed")
 
-# Get references that were removed
+# get references that were removed
 ref_vec <- vector()
 for (i in seq_along(1:length(outlier_ref_comb))) {
   ref_vec[i] <- paste(c(outlier_ref_comb[[i]]), collapse = "-")
 }
 
-# Correct the p-values as the t_test_slope doesn't correct properly in a loop
+# correct the p-values and output the results
 t_test_outliers <- t_test_outliers %>%
   mutate(reference_removed_id = rep(ref_vec, each = 3)) %>%
   mutate(slope = factor(slope, 
                         levels = c("bef_slope", "average_oy_slope", "trans_oy_slope"))) %>%
   arrange(reference_removed, slope)
 
-write_csv(t_test_outliers, 
-          here("figures/t_test_outliers_removed.csv")  )
+write_csv(t_test_outliers, here("figures/Table_S2_outliers_removed.csv")  )
 
 
+### Main text
 
+# we used model selection to explore how four predictor variables: 
+# (1) species specialisation index: species_sorting
+# (2) total average overyielding: mean_ave_overyield
+# (3) coefficient of variation among environments in average overyielding: cv_ave_overyield
+# (4) coefficient of variation among environments in average ecosystem functioning: habitat_cv
 
+# affected the slope between scale and transgressive overyielding between experiments
 
-# Compare the slopes for bef-slope, average overyielding and trans-oy slope
-p1 <- ggplot(data = meta_scale_slope %>% 
-               mutate(slope_type = factor(slope_type, 
-                                          levels(factor(slope_type))[c(2,1,3)])) %>%
-               mutate(slope_type = factor(slope_type, 
-                                          labels = c("BEF-scale", "ave-OY-scale", "trans-OY-scale"))),
-             aes(x = slope_type, y = slope_value)) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_boxplot(width = 0.35, alpha = 0.6, outlier.shape = NA) +
-  geom_jitter(size = 2, alpha = 0.3, width = 0.1, shape = 16) +
-  scale_colour_viridis_d(begin = 0, end = 0.9) +
-  xlab("") +
-  ylab("slope estimate") +
-  theme_meta() +
-  theme(legend.position = "none",
-        axis.text.x = element_text(angle = 45, hjust = 1))
+## make sure the data is clean
 
-ggsave(p1,
-       filename = here("figures/slope_comparison.svg"),
-       units = "cm",
-       width = 8,
-       height = 8)
-
-
-### Model transgressive overyielding slopes
-
-### Transgressive overyielding
-
-## What are the explanatory variables
-# "species_sorting"
-# "cv_ave_overyield"
-# "mean_ave_overyield" 
-# "habitat_cv"
-
-# Check the distribution of these variables
+# check the distribution of these variables
 filter(meta_scale_slope, slope_type == "trans_oy_slope") %>%
-  filter(Experiment_ID != "Dzialowski_Smith_2008_one") %>%
   select(slope_value, species_sorting, cv_ave_overyield, mean_ave_overyield, habitat_cv) %>%
   gather(key = "variable", value = "value") %>%
   ggplot(aes(x = value, fill = variable)) +
@@ -742,18 +768,16 @@ filter(meta_scale_slope, slope_type == "trans_oy_slope") %>%
   facet_wrap(~variable, scales = "free") +
   theme_classic()
 
-# Check the correlation among these variables
-pairs(select(filter(meta_scale_slope, slope_type == "trans_oy_slope",
-                    Experiment_ID != "Dzialowski_Smith_2008_one"),
+# check the correlation among these variables
+pairs(select(filter(meta_scale_slope, slope_type == "trans_oy_slope"),
              slope_value, species_sorting, cv_ave_overyield, mean_ave_overyield, habitat_cv))
-corrplot(cor(select(filter(meta_scale_slope, slope_type == "trans_oy_slope",
-                           Experiment_ID != "Dzialowski_Smith_2008_one"),
+
+corrplot(cor(select(filter(meta_scale_slope, slope_type == "trans_oy_slope"),
                 slope_value, species_sorting, cv_ave_overyield, mean_ave_overyield, habitat_cv)),
          method = "number", type = "lower")
 
+# set up a function to run different models that can then be compared
 
-### Fit different candidate models based on the explanatory variables
-# Set up a function to run different models with ease!
 lm_bef_scale <- function(data = meta_scale_slope, slope = "trans_oy_slope",
                          explans = exp_vars, outliers = NA) {
   cof_out <- vector("list", length(explans))
@@ -773,7 +797,7 @@ lm_bef_scale <- function(data = meta_scale_slope, slope = "trans_oy_slope",
             by = "model")
 }
 
-# Set up the explanatory variables for the different models
+# set up the explanatory variables for the different models
 exp_vars <- list(c("species_sorting", "mean_ave_overyield", "habitat_cv", "cv_ave_overyield"),
                  c("species_sorting*mean_ave_overyield"), 
                  c("species_sorting*habitat_cv"),
@@ -783,54 +807,68 @@ exp_vars <- list(c("species_sorting", "mean_ave_overyield", "habitat_cv", "cv_av
                  c("habitat_cv"),
                  c("mean_ave_overyield"))
 
-# Run this set of models with all the data
+# run this set of models with all the data
 trans_y_lm <- lm_bef_scale(data = meta_scale_slope, 
                            slope = "trans_oy_slope", 
                            explans = exp_vars, outliers = NA)
 
-# Arrange the models by AIC
-View(trans_y_lm %>% arrange(AIC)) # examine the results
+# arrange the models by AIC and examine the results
+View(trans_y_lm %>% arrange(AIC))
 
-# Extract relevant columns
-trans_y_lm <- trans_y_lm %>% select(model, term,
-                      r.squared, AIC) %>%
+
+# table S3
+
+# in this table, we output a summary of the models fit to the slopes between scale and transgressive overyielding with all the data
+
+# clean this output, extract relevant columns and output the table
+trans_y_lm <- trans_y_lm %>% 
+  select(model, term, r.squared, AIC) %>%
   filter(term != "(Intercept)") %>%
   group_by(model, r.squared, AIC) %>%
-  summarise(terms = paste(term, collapse = "+")) %>% ungroup() %>%
+  summarise(terms = paste(term, collapse = "+")) %>% 
+  ungroup() %>%
   arrange(AIC) %>% select(terms, r.squared, AIC) %>%
   mutate(delta_AIC =  AIC - (min(AIC))) %>%
   mutate(AIC_wt_start = exp(1)^(-0.5*delta_AIC)) %>%
   mutate(AIC_wt = AIC_wt_start/sum(AIC_wt_start)) %>%
   select(-AIC_wt_start)
 
-write_csv(trans_y_lm, 
-          "trans_y_lm.csv")
+write_csv(trans_y_lm, here("figures/Table_S3.csv") )
 
 
-# Run this set of models without the major outlier: Dzialowski and Smith 2008
+# run this set of models without the major outlier: Dzialowski and Smith 2008
 trans_y_lm_out <- lm_bef_scale(data = meta_scale_slope, 
                                slope = "trans_oy_slope", 
                                explans = exp_vars, outliers = c("Dzialowski_Smith_2008_one"))
 
-View(trans_y_lm_out %>% arrange(AIC)) # examine the results
+# examine the results
+View(trans_y_lm_out %>% arrange(AIC))
 
-trans_y_lm_out <- trans_y_lm_out %>% select(model, term,
-                                            r.squared, AIC) %>%
+
+# table S4
+
+# In this table, we output a summary of the models fit to the slopes between scale and transgressive overyielding with all the data when a major outlier is removed
+
+# clean this output, extract relevant columns and output the table
+trans_y_lm_out <- trans_y_lm_out %>% 
+  select(model, term, r.squared, AIC) %>%
   filter(term != "(Intercept)") %>%
   group_by(model, r.squared, AIC) %>%
-  summarise(terms = paste(term, collapse = "+")) %>% ungroup() %>%
+  summarise(terms = paste(term, collapse = "+")) %>% 
+  ungroup() %>%
   arrange(AIC) %>% select(terms, r.squared, AIC) %>%
   mutate(delta_AIC =  AIC - (min(AIC))) %>%
   mutate(AIC_wt_start = exp(1)^(-0.5*delta_AIC)) %>%
   mutate(AIC_wt = AIC_wt_start/sum(AIC_wt_start)) %>%
   select(-AIC_wt_start)
 
-write_csv(trans_y_lm_out, "trans_y_lm_out.csv")
+write_csv(trans_y_lm_out, here("figures/Table_S4.csv"))
 
 
-### From this, the best model by a significant margin is the species sorting*mean model
+# figure 3B
 
-# Species sorting*mean overyielding linear model
+# from this model selection, the best model by a significant margin is the species sorting*mean model
+# pecies sorting*mean overyielding linear model
 
 # Using the full dataset
 ss_lm <- lm(slope_value ~ species_sorting*mean_ave_overyield, 
