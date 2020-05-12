@@ -1,5 +1,5 @@
 
-# Title: Gamfeldt et al. BEF-scale literature synthesis code
+# Title: Gamfeldt et al. Biodiversity and ecosystem functioning across gradients in spatial scale (literature synthesis code)
 
 # load libraries
 library(tidyverse)
@@ -35,14 +35,12 @@ theme_meta <- function(base_size = 12, base_family = "") {
 
 ### download data
 
-# the raw data are archived on [Figshare](https://doi.org/10.6084/m9.figshare.12279884.v1)
+# the raw data are archived on [Figshare](https://doi.org/10.6084/m9.figshare.12287303.v1)
 
-# download the data from figshare once published
+# citation: Gamfeldt, Lars; Roger, Fabian; Palm, Martin; Hagan, James; Warringer, Jonas; Farewell, Anne (2020): Biodiversity and ecosystem functioning across gradients in spatial scale (literature synthesis). figshare. Dataset. https://doi.org/10.6084/m9.figshare.12287303.v1
 
-# for now, we just read in the data normally
-
-### read in the raw data
-meta_dat_raw <- read_csv( here("raw_data/BEF-scale_meta-analysis_database.csv") )
+# load the raw data
+meta_dat_raw <- read_csv( url("https://ndownloader.figshare.com/files/22647539") )
 
 # the raw data file has extra columns in the csv file structure which we remove
 meta_dat_raw <- meta_dat_raw %>% select(-contains("X3"))
@@ -952,15 +950,12 @@ ggsave(fig_3B,
 
 ### download data
 
-# the raw data are archived on [Figshare](https://doi.org/10.6084/m9.figshare.12279884.v1)
+# the raw data are archived on [Figshare](https://doi.org/10.6084/m9.figshare.12287303.v1)
 
-# download the data from figshare once published
+# citation: Gamfeldt, Lars; Roger, Fabian; Palm, Martin; Hagan, James; Warringer, Jonas; Farewell, Anne (2020): Biodiversity and ecosystem functioning across gradients in spatial scale (literature synthesis). figshare. Dataset. https://doi.org/10.6084/m9.figshare.12287303.v1
 
-# for now, we just read in the data normally
-
-
-### read in the raw data
-data_ass <- read_csv( here("raw_data/BEF-scale_meta-analysis_data_assessment.csv") )
+# load the raw data
+data_ass <- read_csv( url("https://ndownloader.figshare.com/files/22647536") )
 
 # check the data
 View(data_ass)
@@ -1046,4 +1041,4 @@ filter(data_ass, inclusion_exclusion == "inclusion") %>%
   sort() %>% 
   length()
 
-# 25 unique studies
+# 25 unique studies overall (26 experiments in total)
