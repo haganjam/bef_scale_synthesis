@@ -26,6 +26,7 @@ It also reproduces additional statistics and values reported in text
 
 In addition, the script examines the data assessment which was used to select papers for the literature via various inclusion/exclusion criteria.
 
+Data are downloaded directly within the script. The meta-data for the two datasets used can be found at: https://ndownloader.figshare.com/files/22918043
 
 
 
