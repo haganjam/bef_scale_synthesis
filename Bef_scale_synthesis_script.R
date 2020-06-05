@@ -43,7 +43,9 @@ theme_meta <- function(base_size = 12, base_family = "") {
 meta_dat_raw <- read_csv( url("https://ndownloader.figshare.com/files/22647539") )
 
 # the raw data file has extra columns in the csv file structure which we remove
-meta_dat_raw <- meta_dat_raw %>% select(-contains("X3"))
+meta_dat_raw <- 
+  meta_dat_raw %>% 
+  select(-contains("X3"))
 
 
 ### based on selection criteria, we removed certain data points from our original raw file
@@ -64,7 +66,9 @@ meta_dat_raw <- filter(meta_dat_raw, Env_type_1 != "disturbance")
 meta_dat_raw <- mutate(meta_dat_raw, Experiment_ID = paste(Reference, Experiment_number, sep = "_"))
 
 # Translate ecosystem function values to positive if low value indicates high ecosystem function
-meta_dat_raw <- meta_dat_raw %>% group_by(Experiment_ID) %>% 
+meta_dat_raw <- 
+  meta_dat_raw %>% 
+  group_by(Experiment_ID) %>% 
   mutate(ef_min = min(Ecosystem_function_mean)) %>% ungroup() %>%
   mutate(ef_min = if_else(ef_min < 0, (-ef_min), 0)) %>% 
   mutate(Ecosystem_function_mean = (Ecosystem_function_mean + ef_min)) %>%
@@ -276,7 +280,8 @@ meta_scale_out <- function(data = meta_dat_raw, data_output = "slopes_data", run
 # coefficient of variation in average overyielding among environments: 'cv_ave_overyield' 
 # coefficient of variation in average ecosystem function across environments: 'habitat_cv'  
 
-hab_oy <- meta_dat_raw %>%
+hab_oy <- 
+  meta_dat_raw %>%
   group_by(Experiment_ID, Environment) %>%
   mutate(habitat_mean = mean(Ecosystem_function_mean)) %>% 
   ungroup() %>% group_by(Experiment_ID) %>%
@@ -309,7 +314,8 @@ hab_oy <- meta_dat_raw %>%
 
 ### calculate species specialisation index for each experiment
 
-ss_dat <- meta_dat_raw %>% 
+ss_dat <- 
+  meta_dat_raw %>% 
   filter(Mixture_treatment != "mixture") %>% 
   group_by(Experiment_ID, Environment) %>%
   mutate(max_eco_func = max(Ecosystem_function_mean)) %>% 
@@ -326,7 +332,8 @@ ss_dat <- meta_dat_raw %>%
 
 # bind these explanatory variables into a dataframe with moderators
 
-explan_vars <- full_join(meta_dat_raw %>%
+explan_vars <- 
+  full_join(meta_dat_raw %>%
   select(Experiment_ID, Realm, Trophic_level, Lineage, Env_type_1, Env_type_2, 
          Ecosystem_function_type, Environment) %>%
   group_by(Experiment_ID) %>%
@@ -354,13 +361,13 @@ run_list <- list(run_1 = c("experiment", "max", "trans_overyield", "ratio"),
 
 
 # run the meta_scale_out() function to output raw values for each experiment
-meta_scale_raw <- full_join(meta_scale_out(data = meta_dat_raw, 
-                                           data_output = "raw_data",
-                                           run_list = run_list), 
+meta_scale_raw <- 
+  full_join(meta_scale_out(data = meta_dat_raw, data_output = "raw_data", run_list = run_list), 
                             explan_vars, by = "Experiment_ID")
 
 # clean this output data
-meta_scale_raw <- meta_scale_raw %>% 
+meta_scale_raw <- 
+  meta_scale_raw %>% 
   select(-monoculture, -mixture) %>%
   spread(key = run, value = overyield_met) %>%
   rename(trans_overyield = "1", average_overyield = "2", bef_slope = bef_slope_env) %>%
@@ -463,16 +470,16 @@ table_s1 <- left_join(match_names,
 write_csv(table_s1, here("figures/table_s1.csv") )
 
 
-### fig. S6, 7, 8
+### fig. S7, 8, 9
 
 # in these graphs, we plot the relationship between scale and: 
-# (1) the bef-slope (fig. S6); 
-# (2) average overyielding (fig. S7) and; 
-# (3) transgressive overyielding (fig. S8) for each study included in the literature synthesis
+# (1) the bef-slope (fig. S7); 
+# (2) average overyielding (fig. S8) and; 
+# (3) transgressive overyielding (fig. S9) for each study included in the literature synthesis
 
 effects <- unique(meta_scale_raw$effect_type)
 effect_names <- c("BEF-slope", "ave-OY", "trans-OY")
-figs6_8_names <- c("S6", "S7", "S8")
+figs7_9_names <- c("S7", "S8", "S9")
 
 raw_plots <- vector("list", length = length(effects))
 
@@ -496,7 +503,7 @@ for (i in seq_along(1:length(effects))) {
           legend.key = element_rect(fill = "white"))
   
   ggsave(raw_plots[[i]],
-         filename = paste( here("figures"),paste(paste("Fig_", figs6_8_names[i], sep = "_"),".svg", sep = ""), sep = "/" ),
+         filename = paste( here("figures"),paste(paste("Fig_", figs7_9_names[i], sep = "_"),".png", sep = ""), sep = "/" ),
          dpi = 400, units = "cm",
          width = 19,
          height = 24)
@@ -774,8 +781,8 @@ corrplot(cor(select(filter(meta_scale_slope, slope_type == "trans_oy_slope"),
                 slope_value, species_sorting, cv_ave_overyield, mean_ave_overyield, habitat_cv)),
          method = "number", type = "lower")
 
-# set up a function to run different models that can then be compared
 
+# set up a function to run different models that can then be compared
 lm_bef_scale <- function(data = meta_scale_slope, slope = "trans_oy_slope",
                          explans = exp_vars, outliers = NA) {
   cof_out <- vector("list", length(explans))
@@ -819,7 +826,8 @@ View(trans_y_lm %>% arrange(AIC))
 # in this table, we output a summary of the models fit to the slopes between scale and transgressive overyielding with all the data
 
 # clean this output, extract relevant columns and output the table
-trans_y_lm <- trans_y_lm %>% 
+trans_y_lm <- 
+  trans_y_lm %>% 
   select(model, term, r.squared, AIC) %>%
   filter(term != "(Intercept)") %>%
   group_by(model, r.squared, AIC) %>%
@@ -848,7 +856,8 @@ View(trans_y_lm_out %>% arrange(AIC))
 # In this table, we output a summary of the models fit to the slopes between scale and transgressive overyielding with all the data when a major outlier is removed
 
 # clean this output, extract relevant columns and output the table
-trans_y_lm_out <- trans_y_lm_out %>% 
+trans_y_lm_out <- 
+  trans_y_lm_out %>% 
   select(model, term, r.squared, AIC) %>%
   filter(term != "(Intercept)") %>%
   group_by(model, r.squared, AIC) %>%
@@ -895,7 +904,8 @@ summary(ss_lm_out)
 # calculate species_sorting slope at different mean_ave_overyield values
 
 # check the range of mean_ave_overyield values
-av_oy_vector <- filter(meta_scale_slope, slope_type == "trans_oy_slope") %>% 
+av_oy_vector <- 
+  filter(meta_scale_slope, slope_type == "trans_oy_slope") %>% 
   pull(mean_ave_overyield)
 av_oy_vector
 
@@ -963,7 +973,8 @@ View(data_ass)
 colnames(data_ass)
 
 # reorder the columns
-data_ass <- data_ass %>% 
+data_ass <- 
+  data_ass %>% 
   select(meta_analysis_database:reason, data_available_y_n:Note_2, inclusion_exclusion)
 
 # check this database
@@ -1012,7 +1023,8 @@ filter(data_ass, suitable_design_y_n == "y", data_available_y_n == "y") %>%
   length()
 
 # extract data for studies with a suitable design but for which data were not available
-contacts <- filter(data_ass, suitable_design_y_n == "y", data_available_y_n == "n") %>%
+contacts <- 
+  filter(data_ass, suitable_design_y_n == "y", data_available_y_n == "n") %>%
   pull(reference_id) %>% 
   unique()
 contacts
